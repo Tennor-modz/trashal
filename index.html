@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Trashcore AI — Multi-Model Chat</title>
+  <title>Drexter AI — Multi-Model Chat</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -16,6 +16,7 @@
       --border: rgba(255, 255, 255, 0.08);
       --menu-bg: rgba(30, 41, 59, 0.95);
       --timestamp: rgba(255, 255, 255, 0.4);
+      --footer-bg: rgba(15, 23, 42, 0.7);
     }
     
     * {
@@ -380,6 +381,27 @@
       transform: translateY(0);
     }
     
+    /* License footer */
+    .license-footer {
+      padding: 12px 20px;
+      background: var(--footer-bg);
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: #94a3b8;
+      text-align: center;
+      font-weight: 500;
+      backdrop-filter: blur(12px);
+    }
+    
+    .license-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .license-footer a:hover {
+      text-decoration: underline;
+    }
+    
     pre.code-block {
       background: rgba(15, 23, 42, 0.7);
       padding: 16px;
@@ -520,6 +542,11 @@
         height: 32px;
         font-size: 16px;
       }
+      
+      .license-footer {
+        padding: 10px 16px;
+        font-size: 12px;
+      }
     }
     
     @media (max-width: 480px) {
@@ -568,6 +595,11 @@
       .timestamp {
         font-size: 10px;
       }
+      
+      .license-footer {
+        padding: 8px 14px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
@@ -578,12 +610,12 @@
     <div class="bg-circle circle-3"></div>
   </div>
   
-  <div class="chat-container" role="main" aria-label="Trashcore AI chat">
+  <div class="chat-container" role="main" aria-label="Drexter AI chat">
     <div class="topbar">
       <div class="logo">
         <div class="logo-icon">D</div>
         <div class="title-container">
-          <div class="title">Trashcore AI</div>
+          <div class="title">Drexter AI</div>
           <div class="muted">Multi-model chat</div>
         </div>
       </div>
@@ -626,6 +658,11 @@
           Send
         </button>
       </div>
+    </div>
+    
+    <!-- License Footer -->
+    <div class="license-footer">
+      Made by <a href="https://github.com/TrashcoreDevs" target="_blank">Trashcore Devs</a> since 2023
     </div>
   </div>
 
@@ -709,7 +746,7 @@
         const welcomeMsg = {
           id: generateMessageId(),
           sender: 'bot',
-          content: '👋 Hello — I\'m <strong>Trashcore AI</strong>. Choose a model from the top-right and start chatting.',
+          content: '👋 Hello — I\'m <strong>Drexter AI</strong>. Choose a model from the top-right and start chatting.',
           timestamp: getCurrentTimestamp()
         };
         chatHistory.push(welcomeMsg);
@@ -729,7 +766,7 @@
       el.className = `message ${msg.sender}`;
       el.dataset.msgId = msg.id;
       
-      const senderName = msg.sender === 'user' ? 'You' : 'Trashcore AI';
+      const senderName = msg.sender === 'user' ? 'You' : 'Drexter AI';
       const formattedTime = formatTime(new Date(msg.timestamp));
       
       if (msg.sender === 'bot') {
@@ -854,6 +891,7 @@
       });
     });
 
+    // ✅ UPDATED sendMessage function to use /api/chat
     async function sendMessage(){
       const text = userInput.value.trim();
       if(!text) return;
@@ -868,7 +906,7 @@
       thinkingEl.dataset.temp = '1';
       thinkingEl.innerHTML = `
         <div class="message-header">
-          <span>Trashcore AI</span>
+          <span>Drexter AI</span>
         </div>
         <div class="typing">
           <span class="typing-indicator"></span>
@@ -882,46 +920,35 @@
 
       try {
         // Identity override
-        if (/who (created|made|developed|invented) you/i.test(text)) {
+        if (/who (created|made) you/i.test(text)) {
           const identity = "I was created by Trashcore Devs, a well-known developer in JavaScript and Python fields.";
           thinkingEl.remove();
           addMessage('bot', identity);
           return;
         }
 
-        let apiUrl = '';
-        switch (currentModel) {
-          case 'copilot':
-            apiUrl = `https://api.nekolabs.my.id/ai/copilot?text=${encodeURIComponent(text)}`;
-            break;
-          case 'qwen':
-            apiUrl = `https://api.nekolabs.web.id/ai/cf/qwen-2.5-coder-32b?text=${encodeURIComponent(text)}`;
-            break;
-          case 'llama':
-            apiUrl = `https://api.nekolabs.web.id/ai/cf/llama-3.3-70b?text=${encodeURIComponent(text)}`;
-            break;
-          case 'gpt':
-            apiUrl = `https://api.nekolabs.web.id/ai/cf/gpt-oss-120b?text=${encodeURIComponent(text)}`;
-            break;
-          default:
-            apiUrl = `https://api.nekolabs.my.id/ai/copilot?text=${encodeURIComponent(text)}`;
-        }
-
-        const res = await fetch(apiUrl, { cache: 'no-store' });
-        const data = await res.json();
-
+        // Get currently selected model
+        const activeOption = document.querySelector('.model-option.active');
+        const model = activeOption ? activeOption.dataset.model : 'copilot';
+        
+        // ✅ Send to your Vercel API route instead of direct nekolabs calls
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text, model })
+        });
+        
+        const data = await response.json();
+        
         thinkingEl.remove();
-
-        // Extract reply text robustly
-        let replyText = '';
-        if (data?.result?.text) replyText = data.result.text;
-        else if (typeof data?.result === 'string') replyText = data.result;
-        else if (typeof data?.answer === 'string') replyText = data.answer;
-        else if (typeof data === 'string') replyText = data;
-        else replyText = "❌ Sorry, no valid response from the model.";
-
-        // Add bot reply
-        addMessage('bot', replyText);
+        
+        if (response.ok) {
+          addMessage('bot', data.reply);
+        } else {
+          addMessage('bot', `❌ Error: ${data.error || 'Failed to get response'}`);
+        }
 
       } catch (err) {
         thinkingEl.remove();
